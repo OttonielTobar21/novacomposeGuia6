@@ -1,0 +1,59 @@
+name: nova-compose
+services:
+  db:
+    environment:
+      MYSQL_DATABASE: novaservices
+      MYSQL_PASSWORD: NovaLab_2026!
+      MYSQL_ROOT_PASSWORD: RootLab_2026!
+      MYSQL_USER: novaapp
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - mysqladmin ping -h localhost -uroot -p$$MYSQL_ROOT_PASSWORD || exit 1
+      timeout: 5s
+      interval: 10s
+      retries: 10
+      start_period: 20s
+    image: mysql:8.4
+    networks:
+      app-net: null
+    restart: unless-stopped
+    volumes:
+      - type: volume
+        source: db_data
+        target: /var/lib/mysql
+        volume: {}
+      - type: bind
+        source: /home/otto2026/nova-compose/db/init
+        target: /docker-entrypoint-initdb.d
+        read_only: true
+        bind: {}
+  web:
+    build:
+      context: /home/otto2026/nova-compose
+      dockerfile: Dockerfile
+    depends_on:
+      db:
+        condition: service_healthy
+        required: true
+    environment:
+      DB_HOST: db
+      DB_NAME: novaservices
+      DB_PASSWORD: NovaLab_2026!
+      DB_USER: novaapp
+    image: novaservices-web:1.0
+    networks:
+      app-net: null
+    ports:
+      - mode: ingress
+        target: 80
+        published: "8080"
+        protocol: tcp
+    restart: unless-stopped
+networks:
+  app-net:
+    name: nova-compose_app-net
+    driver: bridge
+volumes:
+  db_data:
+    name: nova-compose_db_data
